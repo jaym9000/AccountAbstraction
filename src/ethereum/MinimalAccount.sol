@@ -51,14 +51,14 @@ contract MinimalAccount is IAccount, Ownable {
                                 FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
-    receive() external payable {}
-
     /// @notice Constructs a new MinimalAccount
     /// @param entryPoint The address of the ERC-4337 EntryPoint contract
     /// @dev Sets the owner to the msg.sender and initializes the EntryPoint reference
     constructor(address entryPoint) Ownable(msg.sender) {
         i_entryPoint = IEntryPoint(entryPoint);
     }
+
+    receive() external payable {}
 
     /*//////////////////////////////////////////////////////////////
                            EXTERNAL FUNCTIONS
@@ -73,7 +73,7 @@ contract MinimalAccount is IAccount, Ownable {
         address dest,
         uint256 value,
         bytes calldata functionData
-    ) external payable requireFromEntryPoint {
+    ) external requireFromEntryPointOrOwner {
         (bool success, bytes memory result) = dest.call{value: value}(
             functionData
         );
@@ -93,7 +93,7 @@ contract MinimalAccount is IAccount, Ownable {
         bytes32 userOpHash,
         uint256 missingAccountFunds
     ) external requireFromEntryPoint returns (uint256 validationData) {
-        _validateSignature(userOp, userOpHash);
+        validationData = _validateSignature(userOp, userOpHash);
         _payPrefund(missingAccountFunds);
     }
 
@@ -124,7 +124,7 @@ contract MinimalAccount is IAccount, Ownable {
     /// @param missingAccountFunds The amount of funds needed
     /// @dev Transfers the required funds to the EntryPoint if needed
     function _payPrefund(uint256 missingAccountFunds) internal {
-        if (missingAccountFunds > 0) {
+        if (missingAccountFunds != 0) {
             (bool success, ) = payable(msg.sender).call{
                 value: missingAccountFunds,
                 gas: type(uint256).max
